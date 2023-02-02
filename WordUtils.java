@@ -1,5 +1,6 @@
 import java.util.Scanner;
-
+import java.util.ArrayList;
+import java.util.List;
 /**
  *	Provides utilities for word games:
  *	1. finds all words in the dictionary that match a list of letters
@@ -13,86 +14,31 @@ import java.util.Scanner;
  *	@since	10/20/22
  */
  
-public class WordUtils
+public class WordUtilities
 {
-	private String[] words;		// the dictionary of words
+	private List<String> words;				// list of words
 	
-	// File containing dictionary of almost 100,000 words.
-	private final String WORD_FILE = "wordList.txt";
 	
 	private Scanner fileReader;
 	
 	/* Constructor */
-	public WordUtils() 
+	public WordUtilities() 
 	{ 
-		words = new String[90934];
+		words = new ArrayList<String>();
 	}
 	
 	/**	Load all of the dictionary from a file into words array. */
-	private void loadWords () 
+	public void readWordsFromFile (String fileNameIn) 
 	{ 
-		fileReader = FileUtils.openToRead(WORD_FILE);
-		
-		String currentLine = "";
-		int index = 0;
-		while (fileReader.hasNext() )
+		fileReader = FileUtils.openToRead(fileNameIn);
+		while (fileReader.hasNext())
 		{
-			currentLine = fileReader.nextLine();
-			words[index] = currentLine.toLowerCase();
-			index++;
+			words.add(fileReader.next());
 		}
+		
+		fileReader.close();	
 	}
 	
-	/**	Find all words that can be formed by a list of letters.
-	 *  
-	 *  @param letters	string containing list of letters
-	 *  @return			array of strings with all words found.
-	 */
-	public String [] findAllWords (String letters)
-	{		
-		int amtOfValidWords = 0;
-		for (int i = 0; i < words.length; i++)
-		{		
-			if ( isWordMatch(words[i], letters) )
-			{
-				amtOfValidWords++;
-			}
-		}
-		
-		String[] retArr = new String[amtOfValidWords];
-		
-		int pos = 0;
-		for (int i = 0; i < words.length; i++)
-		{		
-			if ( isWordMatch(words[i], letters) )
-			{
-				retArr[pos] = words[i];
-				pos++;
-			}
-		}
-		
-		return retArr;
-	}
-	
-	/**	Find the amt of words that can be formed by a list of letters.
-	 * 
-	 *  @param letters	string containing list of letters
-	 *  @return			int amt of possible words containing those letters.
-	 */
-	public int getAmtOfValidWords ( String letters)
-	{		
-		loadWords();
-		int amtOfValidWords = 0;
-		for (int i = 0; i < words.length; i++)
-		{		
-			if ( isWordMatch(words[i], letters) )
-			{
-				amtOfValidWords++;
-			}
-		}
-		
-		return amtOfValidWords;
-	}
 	
 	/**
 	 *  Decides if a word matches a group of letters.
@@ -103,7 +49,6 @@ public class WordUtils
 	 */
 	public boolean isWordMatch (String word, String letters) 
 	{
-		boolean isValid = false;
 		for (int i = 0; i < word.length(); i++)
 		{
 			if ( getFrequency(word.charAt(i), letters) < getFrequency(word.charAt(i), word ) )
@@ -135,7 +80,50 @@ public class WordUtils
 		return count;
 	}
 	
+	/**
+	 *	Determines if a word's characters match a group of letters
+	 *	@param word		the word to check
+	 *	@param letters	the letters
+	 *	@return			true if the word's chars match; false otherwise
+	 */
+	private boolean wordMatch(String word, String letters) {
+		// if the word is longer than letters return false
+		if (word.length() > letters.length()) return false;
+		
+		// while there are still characters in word, check each word character
+		// with letters
+		while (word.length() > 0) {
+			// using the first character in word, find the character's index inside letters
+			// and ignore the case
+			int index = letters.toLowerCase().indexOf(Character.toLowerCase(word.charAt(0)));
+			// if the word character is not in letters, then return false
+			if (index < 0) return false;
+			
+			// remove character from word and letters
+			word = word.substring(1);
+			letters = letters.substring(0, index) + letters.substring(index + 1);
+		}
+		// all word letters were found in letters
+		return true;
+	}
 	
+	/**
+	 *	finds all words that match some or all of a group of alphabetic characters
+	 *	Precondition: letters can only contain alphabetic characters a-z and A-Z
+	 *	@param letters		group of alphabetic characters
+	 *	@return				an ArrayList of all the words that match some or all
+	 *						of the characters in letters
+	 */
+	public ArrayList<String> allWords(String letters) {
+		ArrayList<String> wordsFound = new ArrayList<String>();
+		// check each word in the database with the letters
+		for (String word: words)
+			if (wordMatch(word, letters))
+				wordsFound.add(word);
+		return wordsFound;
+	}
+	
+
 	/**	Print the words found to the screen.
 	 *  
 	 *  @param words	array containing the words to be printed
@@ -155,75 +143,29 @@ public class WordUtils
 		}
 	}
 	
-	/**	Finds the highest scoring word according to a score table.
-	 *
-	 *  @param word  		An array of words to check
-	 *  @param scoreTable	An array of 26 integer scores in letter order
-	 *  @return   			The word with the highest score
-	 */
-	public String bestWord (String [] wordList, int [] scoreTable)
-	{
-		String bestWordString = "";
-		int currentHighest = 0;
-		int currentRunning = 0;
-		
-		for (int i = 0; i < wordList.length; i++)
-		{
-			currentRunning = getScore(wordList[i], scoreTable);
-			if (currentRunning > currentHighest)
-			{
-				bestWordString = wordList[i];
-				currentHighest = currentRunning;
-			}
-			
-		}
-		return bestWordString;
-	}
-	
-	/**	Calculates the score of one word according to a score table.
-	 *
-	 *  @param word			The word to score
-	 *  @param scoreTable	An array of 26 integer scores in letter order
-	 *  @return				The integer score of the word
-	 */
-	public int getScore (String word, int [] scoreTable)
-	{
-		int score = 0;
-		
-		for (int i = 0; i < word.length(); i++)
-		{
-			score += scoreTable[ (int)(word.charAt(i)) - 97  ];
-		}
-		
-		return score;
-	}
-	
 	/**
-	 * This is a getter method that loads the word array and then returns 
-	 * the entire dictionary. 
-	 * 
-	 * @return 	words 	array containing the entire dictionary
+	 *	Sort the words in the database
 	 */
-	public String[] getWords()
-	{
-		loadWords();
-		return words;
+	public void sortWords() {
+		SortMethods sm = new SortMethods();
+		sm.mergeSort(words);
 	}
+
 	
 	/***************************************************************/
 	/************************** Testing ****************************/
 	/***************************************************************/
-	public static void main (String [] args)
-	{
-		WordUtils wu = new WordUtils();
-		wu.run();
-	}
+//	public static void main (String [] args)
+//	{
+//		WordUtilities wu = new WordUtilities();
+//		wu.run();
+//	}
 	
 	/**
 	 * Runs a test for WordUtils
-	 */
+	 
 	public void run() {
-		loadWords();
+		readWordsFromFile();
 		String letters = Prompt.getString("Please enter a list of letters, from 3 to 12 letters long, without spaces");
 		String [] word = findAllWords(letters);
 		System.out.println();
@@ -235,4 +177,5 @@ public class WordUtils
 		System.out.println("\n\nHighest scoring word: " + best + "\nScore = " 
 							+ getScore(best, scoreTable) + "\n");
 	}
+	*/
 }
